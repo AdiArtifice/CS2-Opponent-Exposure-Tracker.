@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Output and large files
+engagements/
+weights.pt
+*.pt
+
+# Logs
+*.log
+
+# Matplotlib cache
+.matplotlib/
