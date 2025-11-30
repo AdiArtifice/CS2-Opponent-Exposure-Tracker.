@@ -1,97 +1,115 @@
-```markdown
 # Gameplay Opponent Engagement Tracker (YOLOv11)
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![YOLOv11](https://img.shields.io/badge/YOLOv11-Ultralytics-00FFFF.svg)
 ![License](https://img.shields.io/badge/AGPL--3.0-green.svg)
 
-Lightweight tool that detects and tracks opponents in short gameplay clips (10–15s) using a custom YOLOv11 model and a multi-object tracker. Produces annotated frames, exposure windows (timestamps + durations), and a visibility timeline.
+A lightweight computer vision tool designed to analyze Counter-Strike 2 gameplay clips. It detects and tracks opponents (`CT`, `T`) and their hitboxes (`HEAD`) using a custom YOLOv11 model combined with the BoT-SORT tracking algorithm. The tool generates a tactical vulnerability report, identifying how long opponents are exposed to the player.
 
 ---
 
 ## Features
-- Detects: `CT`, `T`, `CT_HEAD`, `T_HEAD`  
-- Persistent tracking via ByteTrack / BoT-SORT  
-- Exposure window segmentation and merging (reduces flicker)  
-- Annotated frame exports and Gantt-style timeline PNG  
-- Configurable frame skipping and confidence threshold
+- **Advanced Tracking:** Uses YOLOv11 for detection and **BoT-SORT** for persistent object tracking across frames.
+- **Smart Exposure Merging:** Automatically merges fragmented detection intervals (gaps < 0.5s) to handle flickering or brief occlusions.
+- **Tactical Classification:** Categorizes exposures based on duration:
+  - **Flash/Noise:** < 0.2s
+  - **Standard:** 0.2s – 1.0s
+  - **HIGH VULNERABILITY:** > 1.0s
+- **Visual Analytics:**
+  - Generates a **Gantt-style timeline** of all opponent exposures.
+  - Exports **annotated frames** (JPEG) at the moment a new target is detected.
+- **Performance Optimization:** Processes every 2nd frame to speed up analysis without significantly compromising tracking accuracy.
 
 ---
 
-## Project layout
-```
+## Project Layout
 
+```text
 .
-├── analyze_bot_exposure.py
-├── weights.pt                # add your YOLOv11 model file
-└── engagements/              # outputs (auto-created)
-
-````
+├── analyze_bot_exposure.py   # Main analysis script
+├── weights.pt                # YOLOv11 trained model weights
+├── gameplay.mp4              # Input video file (user provided)
+├── requirements.txt          # Python dependencies
+└── engagements/              # Output directory (auto-created)
+    ├── engagement_*.jpg      # Snapshots of detected targets
+    └── exposure_timeline.png # Visualization chart
+```
 
 ---
 
 ## Requirements
-- Python 3.8+  
-- (Recommended) GPU + CUDA  
+- Python 3.8+
+- (Recommended) GPU + CUDA for faster inference
 - Python packages:
 ```bash
-pip install ultralytics opencv-python matplotlib
-````
-
----
-
-## Quick setup
-
-```bash
-git clone https://github.com/AdiArtifice/gameplay-engagement-tracker.git
-cd gameplay-engagement-tracker
-pip install ultralytics opencv-python matplotlib
-```
-
-Edit configuration values at the top of `analyze_bot_exposure.py`:
-
-```py
-VIDEO_PATH = "gameplay.mp4"
-MODEL_PATH = "weights.pt"
-FRAME_SKIP = 2
-CONFIDENCE_THRESHOLD = 0.5
-TRACKER_CONFIG = "bytetrack.yaml"
+pip install -r requirements.txt
 ```
 
 ---
 
-## Run
+## Configuration
+
+You can adjust the following constants at the top of [`analyze_bot_exposure.py`](analyze_bot_exposure.py ) to fit your specific video or model:
+
+| Constant | Default | Description |
+| :--- | :--- | :--- |
+| [`VIDEO_PATH`](analyze_bot_exposure.py ) | `"gameplay.mp4"` | Path to the input video file. |
+| [`MODEL_PATH`](analyze_bot_exposure.py ) | `"weights.pt"` | Path to the trained YOLOv11 `.pt` file. |
+| [`OUTPUT_DIR`](analyze_bot_exposure.py ) | `"engagements"` | Folder where results will be saved. |
+| [`CONFIDENCE_THRESHOLD`](analyze_bot_exposure.py ) | `0.5` | Minimum confidence (0.0-1.0) to accept a detection. |
+
+---
+
+## How to Run
+
+1. Place your video file in the project root and rename it to [`gameplay.mp4`](gameplay.mp4 ) (or update the script).
+2. Ensure your model weights are saved as [`weights.pt`](weights.pt ).
+3. Run the script:
 
 ```bash
 python analyze_bot_exposure.py
 ```
 
-Outputs (saved to `engagements/`):
+---
 
-* `engagement_*.jpg` — annotated frames with timestamps
-* `exposure_timeline.png` — Gantt-style timeline
-* Console summary listing exposure windows and durations
+## Outputs
+
+The script produces a console report and files in the [`engagements`](engagements ) folder.
+
+### 1. Console Report
+Separates detections into **Body Exposures** (Full Target) and **Head Exposures** (Partial Target).
+
+```text
+TACTICAL VULNERABILITY REPORT (MERGED)
+============================================================
+Total Distinct Targets: 3
+Total Exposure Events: 5
+------------------------------------------------------------
+
+BODY EXPOSURES (Full Target)
+ID    | Class      | Start    | End      | Duration   | Tactical Category
+---------------------------------------------------------------------------
+1     | T          | 0.50     | 2.30     | 1.80       | HIGH VULNERABILITY
+2     | CT         | 4.10     | 4.25     | 0.15       | Flash/Noise
+---------------------------------------------------------------------------
+```
+
+### 2. Visual Timeline (`exposure_timeline.png`)
+A Gantt chart showing exactly when each unique ID appeared and for how long.
+- **Blue/Cyan:** CT / CT Head
+- **Orange/Yellow:** T / T Head
+
+### 3. Engagement Snapshots
+Images like `engagement_id_1_time_0.50s.jpg` are saved to visually verify the start of an engagement.
 
 ---
 
-## Example console snippet
+## Limitations
 
-```
-=== EXPOSURE ANALYSIS REPORT ===
-Total Exposure Windows: 8
-Unique Bot IDs: 3
-
-ID 3 (T_HEAD): 5.10s–8.20s (3.10s) [HIGH VULNERABILITY]
-ID 1 (T): 0.50s–2.30s (1.80s) [Standard]
-```
-
----
-
-## Notes & limitations
-
-* Optimized for bots / predictable movement. Performance on fast human players may vary.
-* Re-identification errors can occur after long occlusions; exposure merging mitigates short flickers.
-* Best used with short clips (10–15 seconds) for now.
+1. **Hardcoded Class Names:** The visualization logic specifically looks for class names containing "CT", "T", or "HEAD" to assign colors. Using a model with different class names (e.g., "person", "car") will result in default gray bars in the timeline.
+2. **Frame Skipping:** The script processes every **2nd frame** to improve speed. While generally effective, extremely fast peeks (under ~33ms at 60fps) might be missed or have slightly inaccurate start/end times.
+3. **Occlusion Handling:** While the script merges gaps smaller than 0.5s, longer occlusions (e.g., an enemy running behind a wall for 2 seconds) will be treated as two separate engagement events with the same ID (if the tracker maintains the ID) or different IDs.
+4. **Single Video Processing:** The script is currently designed to process one video file defined in the code variables, rather than a batch of videos or command-line arguments.
 
 ---
 
@@ -112,7 +130,4 @@ Email: [123aditya6025@sjcem.edu.in](mailto:123aditya6025@sjcem.edu.in)
   year = {2025},
   url = {https://github.com/AdiArtifice/gameplay-engagement-tracker}
 }
-```
-
-```
 ```
