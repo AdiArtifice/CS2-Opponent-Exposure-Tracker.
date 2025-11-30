@@ -15,7 +15,6 @@ env/
 .DS_Store
 
 # Output and large files
-engagements/
 weights.pt
 *.pt
 
