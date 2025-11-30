@@ -47,19 +47,6 @@ pip install -r requirements.txt
 
 ---
 
-## Configuration
-
-You can adjust the following constants at the top of [`analyze_bot_exposure.py`](analyze_bot_exposure.py ) to fit your specific video or model:
-
-| Constant | Default | Description |
-| :--- | :--- | :--- |
-| [`VIDEO_PATH`](analyze_bot_exposure.py ) | `"gameplay.mp4"` | Path to the input video file. |
-| [`MODEL_PATH`](analyze_bot_exposure.py ) | `"weights.pt"` | Path to the trained YOLOv11 `.pt` file. |
-| [`OUTPUT_DIR`](analyze_bot_exposure.py ) | `"engagements"` | Folder where results will be saved. |
-| [`CONFIDENCE_THRESHOLD`](analyze_bot_exposure.py ) | `0.5` | Minimum confidence (0.0-1.0) to accept a detection. |
-
----
-
 ## How to Run
 
 1. Place your video file in the project root and rename it to [`gameplay.mp4`](gameplay.mp4 ) (or update the script).
